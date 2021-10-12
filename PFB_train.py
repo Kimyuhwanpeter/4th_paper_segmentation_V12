@@ -48,7 +48,7 @@ power = 1.
 
 #optim = RAdamOptimizer(total_steps=total_step*FLAGS.epochs,learning_rate=FLAGS.lr)
 optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.9, beta_2=0.99)
-
+color_map = [[255, 0, 0], [0, 255, 0]]
 
 def tr_func(image_list, label_list):
 
@@ -228,13 +228,16 @@ def main():
                 if count % 10 == 0:
                     print("Epoch: {} [{}/{}] loss = {}".format(epoch, step+1, tr_idx, loss))
 
+                    #logits = run_model(model, batch_images, False)
+                    #images = logits[:, :, :, 0:1]
+
                     
 
                 count += 1
 
             tr_iter = iter(train_ge)
             miou = 0.
-            for i in range(tr_idx): # MIOU 측정하는곳도 고쳐야함
+            for i in range(tr_idx):
                 batch_images, batch_labels = next(tr_iter)
                 batch_labels = tf.squeeze(batch_labels, -1)
                 for j in range(FLAGS.batch_size):
