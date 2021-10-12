@@ -228,6 +228,7 @@ def main():
                 if count % 10 == 0:
                     print("Epoch: {} [{}/{}] loss = {}".format(epoch, step+1, tr_idx, loss))
 
+                    
 
                 count += 1
 
