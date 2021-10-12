@@ -48,7 +48,7 @@ power = 1.
 
 #optim = RAdamOptimizer(total_steps=total_step*FLAGS.epochs,learning_rate=FLAGS.lr)
 optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.9, beta_2=0.99)
-color_map = [[255, 0, 0], [0, 255, 0]]
+color_map = np.array([[255, 0, 0], [0, 255, 0]], dtype=np.uint8)
 
 def tr_func(image_list, label_list):
 
@@ -153,8 +153,6 @@ def main():
         #elif isinstance(layer, tf.keras.layers.Conv2D):
         #    layer.kernel_regularizer = tf.keras.regularizers.l2(0.0005)
 
-    # weight extract and restore 하자!!!
-
     model.summary()
 
     if FLAGS.pre_checkpoint:
@@ -199,14 +197,14 @@ def main():
             tr_iter = iter(train_ge)
             tr_idx = len(train_img_dataset) // FLAGS.batch_size
             for step in range(tr_idx):
-                batch_images, batch_labels = next(tr_iter)  # 라벨이 문제임
+                batch_images, batch_labels = next(tr_iter)  
                 batch_labels = batch_labels.numpy()
                 batch_labels = np.where(batch_labels == FLAGS.ignore_label, 2, batch_labels)    # 2 is void
                 batch_labels = np.where(batch_labels == 255, 0, batch_labels)
                 batch_labels = np.where(batch_labels == 128, 1, batch_labels)
                 batch_labels = np.squeeze(batch_labels, -1)
 
-                # 클래스 불균형 문제도 해결하여 weight 로 추가해서 넣자
+                
                 class_imbal_labels = batch_labels
                 class_imbal_labels_buf = 0.
                 for i in range(FLAGS.batch_size):
@@ -228,9 +226,14 @@ def main():
                 if count % 10 == 0:
                     print("Epoch: {} [{}/{}] loss = {}".format(epoch, step+1, tr_idx, loss))
 
-                    #logits = run_model(model, batch_images, False)
-                    #images = logits[:, :, :, 0:1]
-
+                    logits = run_model(model, batch_images, False)
+                    images = tf.nn.sigmoid(logits[:, :, :, 0:1])
+                    for i in range(FLAGS.batch_size):
+                        image = images[i]
+                        image = np.where(image.numpy() >= 0.5, 1, 0)
+                        
+                        pred_mask_color = color_map[image]  # predict 이미지는 만들었음 이어서 코딩해야함!! 기억해!!
+                        a = 0
                     
 
                 count += 1
@@ -263,7 +266,9 @@ def main():
                     miou += miou_
             
             print("Epoch: {}, IoU = {}".format(epoch, miou / len(train_img_dataset)))
-
+            # MIOU도 text로 쓰자 기억해!!!!
+            # validataion , test miou도 실시간으로!!!
+            # 다른 measurement도 같이!! 기억해!!!!
 
 if __name__ == "__main__":
     main()
