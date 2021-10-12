@@ -3,12 +3,13 @@ from predefine_segmentation_model import *
 from modified_deeplab_V3 import *
 from PFB_measurement import Measurement
 from random import shuffle, random
+from keras_radam.training import RAdamOptimizer
 
 import numpy as np
 import easydict
 import os
 
-FLAGS = easydict.EasyDict({"img_size": 256,
+FLAGS = easydict.EasyDict({"img_size": 512,
                            
                            "label_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/annotations/new_annotation/",
                            
@@ -22,20 +23,20 @@ FLAGS = easydict.EasyDict({"img_size": 256,
 
                            "min_lr": 1e-7,
                            
-                           "epochs": 300,
+                           "epochs": 200,
 
                            "total_classes": 3,
 
                            "ignore_label": 0,
 
-                           "batch_size": 4,
+                           "batch_size": 2,
 
                            "train": True})
 
 
-#total_step = len(os.listdir(FLAGS.image_path)) // FLAGS.batch_size
-#warmup_step = int(total_step * 0.6)
-#power = 1.
+total_step = len(os.listdir(FLAGS.image_path)) // FLAGS.batch_size
+warmup_step = int(total_step * 0.6)
+power = 1.
 
 #lr_scheduler = tf.keras.optimizers.schedules.PolynomialDecay(
 #    initial_learning_rate = FLAGS.lr,
@@ -45,7 +46,9 @@ FLAGS = easydict.EasyDict({"img_size": 256,
 #)
 #lr_schedule = LearningRateScheduler(FLAGS.lr, warmup_step, lr_scheduler)
 
+#optim = RAdamOptimizer(total_steps=total_step*FLAGS.epochs,learning_rate=FLAGS.lr)
 optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.9, beta_2=0.99)
+
 
 def tr_func(image_list, label_list):
 
@@ -137,7 +140,7 @@ def cal_loss(model, images, labels, objectiness, class_im_plain, ignore_label):
 def main():
     tf.keras.backend.clear_session()
     # 마지막 plain은 objecttines에 대한 True or False값 즉 (mask값이고), 라벨은 annotation 이미지임 (crop/weed)
-    #model = PFB_model(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), OUTPUT_CHANNELS=FLAGS.total_classes)
+    #model = PFB_model(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), OUTPUT_CHANNELS=FLAGS.total_classes-1)
     model = DeepLabV3Plus(FLAGS.img_size, FLAGS.img_size, 34)
     out = model.get_layer("activation_decoder_2_upsample").output
     out = tf.keras.layers.Conv2D(FLAGS.total_classes-1, (1,1), name="output_layer")(out)
