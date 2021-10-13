@@ -1,5 +1,4 @@
 # -*- coding:utf-8 -*-
-from predefine_segmentation_model import *
 from modified_deeplab_V3 import *
 from PFB_measurement import Measurement
 from random import shuffle, random
@@ -11,15 +10,15 @@ import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/train.txt",
+                           "train_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/train.txt",
 
-                           "val_txt_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/val.txt",
+                           "val_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/val.txt",
 
-                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/test.txt",
+                           "test_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/test.txt",
                            
-                           "label_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/raw_aug_gray_mask/",
+                           "label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/raw_aug_gray_mask/",
                            
-                           "image_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/raw_aug_rgb_img/",
+                           "image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/raw_aug_rgb_img/",
                            
                            "pre_checkpoint": False,
                            
@@ -35,19 +34,19 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 2,
+                           "batch_size": 4,
 
-                           "sample_images": "",
+                           "sample_images": "/yuhwan/yuhwan/checkpoint/Segmenation/V2/sample_images",
 
-                           "save_checkpoint": "",
+                           "save_checkpoint": "/yuhwan/yuhwan/checkpoint/Segmenation/V2/checkpoint",
 
-                           "save_print": "",
+                           "save_print": "/yuhwan/yuhwan/checkpoint/Segmenation/V2/train_out.txt",
 
                            "train": True})
 
 
 optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.9, beta_2=0.99)
-color_map = np.array([[255, 0, 0], [0, 0, 255]], dtype=np.uint8)
+color_map = np.array([[255, 0, 0], [0, 0, 255], [0,0,0]], dtype=np.uint8)
 
 def tr_func(image_list, label_list):
 
@@ -247,8 +246,10 @@ def main():
                 objectiness = np.where(batch_labels == 2, 0, 1)  # 피사체가 있는곳은 1 없는곳은 0으로 만들어준것
 
                 loss = cal_loss(model, batch_images, batch_labels, objectiness, class_im_plain, 2)
-                if count % 100 == 0:
+                if count % 10 == 0:
                     print("Epoch: {} [{}/{}] loss = {}".format(epoch, step+1, tr_idx, loss))
+
+                if count % 100 == 0:
 
                     logits = run_model(model, batch_images, False)
                     images = tf.nn.sigmoid(logits[:, :, :, 0:1])
@@ -256,8 +257,11 @@ def main():
                         image = images[i]
                         label = batch_labels[i]
                         image = np.where(image.numpy() >= 0.5, 1, 0)
+                        ignore_void_idx = np.where(label==2) # 2 is void label
+                        temp_img = image
+                        temp_img[ignore_void_idx] = 2
 
-                        pred_mask_color = color_map[image]  # 논문그림처럼 할것!
+                        pred_mask_color = color_map[temp_img]  # 논문그림처럼 할것!
                         pred_mask_color = np.squeeze(pred_mask_color, 2)
                         label = np.expand_dims(label, -1)
                         label = np.concatenate((label, label, label), -1)
@@ -265,16 +269,16 @@ def main():
                         label_mask_color = np.where(label == np.array([0,0,0], dtype=np.uint8), np.array([255, 0, 0], dtype=np.uint8), label_mask_color)
                         label_mask_color = np.where(label == np.array([1,1,1], dtype=np.uint8), np.array([0, 0, 255], dtype=np.uint8), label_mask_color)
 
+                        temp_img = np.concatenate((temp_img, temp_img, temp_img), -1)
                         image = np.concatenate((image, image, image), -1)
-                        pred_mask_warping = np.where(image == np.array([0,0,0], dtype=np.uint8), np.array([255, 0, 0], dtype=np.uint8), print_images[i])
-                        pred_mask_warping = np.where(image == np.array([1,1,1], dtype=np.uint8), np.array([0, 0, 255], dtype=np.uint8), print_images[i])
+                        pred_mask_warping = np.where(temp_img == np.array([2,2,2], dtype=np.uint8), print_images[i], image)
+                        pred_mask_warping = np.where(temp_img == np.array([0,0,0], dtype=np.uint8), np.array([255, 0, 0], dtype=np.uint8), pred_mask_warping)
+                        pred_mask_warping = np.where(temp_img == np.array([1,1,1], dtype=np.uint8), np.array([0, 0, 255], dtype=np.uint8), pred_mask_warping)
                         pred_mask_warping /= 255.
 
                         plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_label.png", label_mask_color)
                         plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_predict.png", pred_mask_color)
                         plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_warping_predict.png", pred_mask_warping)
-
-                        a = 0   # debuging point
                     
 
                 count += 1
@@ -335,19 +339,18 @@ def main():
             output_text.write("===================================================================")
             output_text.write("\n")
             output_text.write("train mIoU: ")
-            output_text.write(str(round(miou / len(train_img_dataset))))
+            output_text.write("%.4f" % (miou / len(train_img_dataset)))
             output_text.write(", crop_iou: ")
-            output_text.write(str(round(crop_iou / len(train_img_dataset))))
+            output_text.write("%.4f" % (crop_iou / len(train_img_dataset)))
             output_text.write(", weed_iou: ")
-            output_text.write(str(round(weed_iou / len(train_img_dataset))))
+            output_text.write("%.4f" % (weed_iou / len(train_img_dataset)))
             output_text.write(", train F1_score: ")
-            output_text.write(str(round(f1_score / len(train_img_dataset))))
+            output_text.write("%.4f" % (f1_score / len(train_img_dataset)))
             output_text.write(", train sensitivity: ")
-            output_text.write(str(round(sensitivity / len(train_img_dataset))))
+            output_text.write("%.4f" % (sensitivity / len(train_img_dataset)))
             output_text.write(", train TDR: ")
-            output_text.write(str(round(tdr / len(train_img_dataset))))
+            output_text.write("%.4f" % (tdr / len(train_img_dataset)))
             output_text.write("\n")
-            output_text.flush()
 
             val_iter = iter(val_ge)
             miou = 0.
@@ -357,7 +360,7 @@ def main():
             crop_iou = 0.
             weed_iou = 0.
             for i in range(len(val_img_dataset)):
-                batch_images, _, batch_labels = next(val_iter)
+                batch_images, batch_labels = next(val_iter)
                 batch_labels = tf.squeeze(batch_labels, -1)
                 for j in range(1):
                     batch_image = tf.expand_dims(batch_images[j], 0)
@@ -398,17 +401,17 @@ def main():
                                                                                                                                          sensitivity / len(val_img_dataset),
                                                                                                                                          tdr / len(val_img_dataset)))
             output_text.write("val mIoU: ")
-            output_text.write(str(round(miou / len(val_img_dataset))))
+            output_text.write("%.4f" % (miou / len(val_img_dataset)))
             output_text.write(", crop_iou: ")
-            output_text.write(str(round(crop_iou / len(val_img_dataset))))
+            output_text.write("%.4f" % (crop_iou / len(val_img_dataset)))
             output_text.write(", weed_iou: ")
-            output_text.write(str(round(weed_iou / len(val_img_dataset))))
+            output_text.write("%.4f" % (weed_iou / len(val_img_dataset)))
             output_text.write(", val F1_score: ")
-            output_text.write(str(round(f1_score / len(val_img_dataset))))
+            output_text.write("%.4f" % (f1_score / len(val_img_dataset)))
             output_text.write(", val sensitivity: ")
-            output_text.write(str(round(sensitivity / len(val_img_dataset))))
+            output_text.write("%.4f" % (sensitivity / len(val_img_dataset)))
             output_text.write(", val TDR: ")
-            output_text.write(str(round(tdr / len(val_img_dataset))))
+            output_text.write("%.4f" % (tdr / len(val_img_dataset)))
             output_text.write("\n")
 
             test_iter = iter(test_ge)
@@ -419,7 +422,7 @@ def main():
             crop_iou = 0.
             weed_iou = 0.
             for i in range(len(test_img_dataset)):
-                batch_images, _, batch_labels = next(test_iter)
+                batch_images, batch_labels = next(test_iter)
                 batch_labels = tf.squeeze(batch_labels, -1)
                 for j in range(1):
                     batch_image = tf.expand_dims(batch_images[j], 0)
@@ -461,20 +464,21 @@ def main():
                                                                                                                                              tdr / len(test_img_dataset)))
             print("=================================================================================================================================================")
             output_text.write("test mIoU: ")
-            output_text.write(str(round(miou / len(test_img_dataset))))
+            output_text.write("%.4f" % (miou / len(test_img_dataset)))
             output_text.write(", crop_iou: ")
-            output_text.write(str(round(crop_iou / len(test_img_dataset))))
+            output_text.write("%.4f" % (crop_iou / len(test_img_dataset)))
             output_text.write(", weed_iou: ")
-            output_text.write(str(round(weed_iou / len(test_img_dataset))))
+            output_text.write("%.4f" % (weed_iou / len(test_img_dataset)))
             output_text.write(", test F1_score: ")
-            output_text.write(str(round(f1_score / len(test_img_dataset))))
+            output_text.write("%.4f" % (f1_score / len(test_img_dataset)))
             output_text.write(", test sensitivity: ")
-            output_text.write(str(round(sensitivity / len(test_img_dataset))))
+            output_text.write("%.4f" % (sensitivity / len(test_img_dataset)))
             output_text.write(", test TDR: ")
-            output_text.write(str(round(tdr / len(test_img_dataset))))
+            output_text.write("%.4f" % (tdr / len(test_img_dataset)))
             output_text.write("\n")
             output_text.write("===================================================================")
             output_text.write("\n")
+            output_text.flush()
 
             model_dir = "%s/%s" % (FLAGS.save_checkpoint, epoch)
             if not os.path.isdir(model_dir):
