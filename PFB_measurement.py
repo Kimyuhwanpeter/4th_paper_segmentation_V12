@@ -3,13 +3,6 @@ import tensorflow as tf
 import numpy as np
 import os
 
-# 안녕하세요!! 지난번에 이어서 좋은 글 잘 읽었습니다. mIoU 계산시에, true label에서는 등장하지 않고 predict label에서는 등장하는 label의 경우는 iou를 0으로 두고 계산을 해주나요?
-# 안녕하세요.네 맞습니다. 간단히 교집합이 없으니 0이 되는 원리 입니다. true label에는 없으나 predict에만 존재한다는 것 자체가 성능이 나쁜것이니 0에 수렴해야 하는 논리와 동일합니다.
-
-# 저 위의 논리대라면, 나누
-# 아!!! predict한 이미지에 void부분을 11로 만들고! miou를 구할 때, void클래스 빈도수는 제외하고 진행하면 되지 않을까? 기억해!!!!! 지금생각났음!!!!!!!!!!!!!
-# 왜냐면! 어차피 predict와 label 위치에 같은 값이 동일하게 있다면 confusion metrice 할때 중앙성분만있음! 그렇기에 cm을 구한 뒤 대각성분을 추출한 뒤 맨 뒤에있는 void라벨을 제거하면 됨! 오키!! 내일 다시한번더 생각천천히해봐!!!기억해 꼭해!!!!!!!!!!!
-
 class Measurement:
     def __init__(self, predict, label, shape, total_classes):
         self.predict = predict
@@ -35,24 +28,90 @@ class Measurement:
         U = np.delete(U, -1)
         cm_ = np.delete(cm, -1)
 
-        miou = cm_ / U
+        out = np.zeros((2))
+        miou = np.divide(cm_, U, out=out, where=U != 0)
+        crop_iou = miou[0]
+        weed_iou = miou[1]
         miou = np.nanmean(miou)
+        
 
-        return miou
+        if weed_iou == float('NaN'):
+            weed_iou = 0.
+        if crop_iou == float('NaN'):
+            crop_iou = 0.
 
+        return miou, crop_iou, weed_iou
 
-class UpdatedMeanIoU(tf.keras.metrics.MeanIoU):
-  def __init__(self,
-               y_true=None,
-               y_pred=None,
-               num_classes=None,
-               name=None,
-               dtype=None):
-    super(UpdatedMeanIoU, self).__init__(num_classes = num_classes,name=name, dtype=dtype)
+    def F1_score_and_recall(self):  # recall - sensitivity
 
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    y_pred = tf.math.argmax(y_pred, axis=-1)
-    return super().update_state(y_true, y_pred, sample_weight)
+        self.predict = np.reshape(self.predict, self.shape)
+        self.label = np.reshape(self.label, self.shape)
+        indices = np.squeeze(np.where(np.not_equal(self.label, 2)), 1)  # 2 is void label
+        self.label = np.array(np.take(self.label, indices), dtype=np.int32)
+        self.predict = np.array(np.take(self.predict, indices), dtype=np.int32)
+
+        TP = self.label * self.predict
+        TP = np.sum(TP, dtype=np.int32)
+        TN = self.label + self.predict
+        TN = TN[TN==0]
+        TN = int(len(TN))
+        
+        FN_func1 = lambda predict: predict[:] == 0
+        FN_func2 = lambda label,predict: label[:] != predict[:]
+        FN = np.where(FN_func1(self.predict) & FN_func2(self.predict, self.label), 1, 0)
+        FN = np.sum(FN, dtype=np.int32)
+
+        FP_func1 = lambda predict: predict[:] == 1
+        FP_func2 = lambda label,predict: label[:] != predict[:]
+        FP = np.where(FP_func1(self.predict) & FP_func2(self.predict, self.label), 1, 0)
+        FP = np.sum(FP, dtype=np.int32)
+       
+        TP_FP = (TP + FP)
+
+        TP_FN = (TP + FN)
+
+        out = np.zeros((1))
+        Precision = np.divide(TP, TP_FP, out=out, where=TP_FP != 0)
+        Recall = np.divide(TP, TP_FN, out=out, where=TP_FN != 0)
+
+        Pre_Re = (Precision + Recall)
+
+        F1_score = np.divide((2 * Precision * Recall), Pre_Re, out=out, where=Pre_Re != 0)
+
+        return F1_score, Recall
+
+    def TDR(self): # True detection rate
+
+        self.predict = np.reshape(self.predict, self.shape)
+        self.label = np.reshape(self.label, self.shape)
+        indices = np.squeeze(np.where(np.not_equal(self.label, 2)), 1)
+        self.label = np.array(np.take(self.label, indices), dtype=np.int32)
+        self.predict = np.array(np.take(self.predict, indices), dtype=np.int32)
+
+        TP = self.label * self.predict
+        TP = np.sum(TP, dtype=np.int32)
+        TN = self.label + self.predict
+        TN = TN[TN==0]
+        TN = int(len(TN))
+        
+        FN_func1 = lambda predict: predict[:] == 0
+        FN_func2 = lambda label,predict: label[:] != predict[:]
+        FN = np.where(FN_func1(self.predict) & FN_func2(self.predict, self.label), 1, 0)
+        FN = np.sum(FN, dtype=np.int32)
+
+        FP_func1 = lambda predict: predict[:] == 1
+        FP_func2 = lambda label,predict: label[:] != predict[:]
+        FP = np.where(FP_func1(self.predict) & FP_func2(self.predict, self.label), 1, 0)
+        FP = np.sum(FP, dtype=np.int32)
+
+        TP_FP = (TP + FP)
+
+        out = np.zeros((1))
+        TDR = np.divide(FP, TP_FP, out=out, where=TP_FP != 0)
+
+        TDR = 1 - TDR
+
+        return TDR
 
 #import matplotlib.pyplot as plt
 
