@@ -10,19 +10,19 @@ import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/train.txt",
+                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/train.txt",
 
-                           "val_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/val.txt",
+                           "val_txt_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/val.txt",
 
-                           "test_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/test.txt",
+                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/test.txt",
                            
-                           "label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/raw_aug_gray_mask/",
+                           "label_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/raw_aug_gray_mask/",
                            
-                           "image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Crop_weed/datasets_IJRR2017/raw_aug_rgb_img/",
+                           "image_path": "D:/[1]DB/[5]4th_paper_DB/crop_weed/datasets_IJRR2017/raw_aug_rgb_img/",
                            
-                           "pre_checkpoint": False,
+                           "pre_checkpoint": True,
                            
-                           "pre_checkpoint_path": "",
+                           "pre_checkpoint_path": "C:/Users/Yuhwan/Downloads/156/156",
                            
                            "lr": 0.0001,
 
@@ -42,7 +42,9 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "save_print": "/yuhwan/yuhwan/checkpoint/Segmenation/V2/train_out.txt",
 
-                           "train": True})
+                           "test_images": "D:/[1]DB/[5]4th_paper_DB/crop_weed/V2/test_images",
+
+                           "train": False})
 
 
 optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.9, beta_2=0.99)
@@ -91,6 +93,22 @@ def test_func(image_list, label_list):
     lab = tf.image.convert_image_dtype(lab, tf.uint8)
 
     return img, lab
+
+def test_func2(image_list, label_list):
+
+    img = tf.io.read_file(image_list)
+    img = tf.image.decode_jpeg(img, 3)
+    img = tf.image.resize(img, [FLAGS.img_size, FLAGS.img_size])
+    img = tf.clip_by_value(img, 0, 255)
+    temp_img = img / 255
+    img = img[:, :, ::-1] - tf.constant([103.939, 116.779, 123.68]) # 평균값 보정
+
+    lab = tf.io.read_file(label_list)
+    lab = tf.image.decode_png(lab, 1)
+    lab = tf.image.resize(lab, [FLAGS.img_size, FLAGS.img_size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    lab = tf.image.convert_image_dtype(lab, tf.uint8)
+
+    return img, temp_img, lab
 
 @tf.function
 def run_model(model, images, training=True):
@@ -152,7 +170,6 @@ def cal_loss(model, images, labels, objectiness, class_im_plain, ignore_label):
 
 # yilog(h(xi;θ))+(1−yi)log(1−h(xi;θ))
 def main():
-    output_text = open(FLAGS.save_print, "w")
     tf.keras.backend.clear_session()
     # 마지막 plain은 objecttines에 대한 True or False값 즉 (mask값이고), 라벨은 annotation 이미지임 (crop/weed)
     # 학습이미지에 대해 online augmentation을 진행--> 전처리로서 필터링을 하던지 해서 , 피사체에 대한 high frequency 성분을
@@ -182,6 +199,7 @@ def main():
     
     if FLAGS.train:
         count = 0
+        output_text = open(FLAGS.save_print, "w")
         
         train_list = np.loadtxt(FLAGS.train_txt_path, dtype="<U200", skiprows=0, usecols=0)
         val_list = np.loadtxt(FLAGS.val_txt_path, dtype="<U200", skiprows=0, usecols=0)
@@ -487,7 +505,83 @@ def main():
             ckpt = tf.train.Checkpoint(model=model, optim=optim)
             ckpt_dir = model_dir + "/Crop_weed_model_{}.ckpt".format(epoch)
             ckpt.save(ckpt_dir)
-            
+    else:
+        test_list = np.loadtxt(FLAGS.test_txt_path, dtype="<U200", skiprows=0, usecols=0)
+
+        test_img_dataset = [FLAGS.image_path + data for data in test_list]
+        test_lab_dataset = [FLAGS.label_path + data for data in test_list]
+
+        test_ge = tf.data.Dataset.from_tensor_slices((test_img_dataset, test_lab_dataset))
+        test_ge = test_ge.map(test_func2)
+        test_ge = test_ge.batch(1)
+        test_ge = test_ge.prefetch(tf.data.experimental.AUTOTUNE)
+
+        test_iter = iter(test_ge)
+        miou = 0.
+        f1_score = 0.
+        tdr = 0.
+        sensitivity = 0.
+        crop_iou = 0.
+        weed_iou = 0.
+        for i in range(len(test_img_dataset)):
+            batch_images, nomral_img, batch_labels = next(test_iter)
+            batch_labels = tf.squeeze(batch_labels, -1)
+            for j in range(1):
+                batch_image = tf.expand_dims(batch_images[j], 0)
+                predict = run_model(model, batch_image, False) # type을 batch label과 같은 type으로 맞춰주어야함
+                predict = tf.nn.sigmoid(predict[0, :, :, 0:1])
+                predict = np.where(predict.numpy() >= 0.5, 1, 0)
+
+                batch_label = tf.cast(batch_labels[j], tf.uint8).numpy()
+                batch_label = np.where(batch_label == FLAGS.ignore_label, 2, batch_label)    # 2 is void
+                batch_label = np.where(batch_label == 255, 0, batch_label)
+                batch_label = np.where(batch_label == 128, 1, batch_label)
+                ignore_label_axis = np.where(batch_label==2)   # 출력은 x,y axis로 나옴!
+                predict[ignore_label_axis] = 2
+
+                miou_, crop_iou_, weed_iou_ = Measurement(predict=predict,
+                                    label=batch_label, 
+                                    shape=[FLAGS.img_size*FLAGS.img_size, ], 
+                                    total_classes=FLAGS.total_classes).MIOU()
+                f1_score_, recall_ = Measurement(predict=predict,
+                                        label=batch_label,
+                                        shape=[FLAGS.img_size*FLAGS.img_size, ],
+                                        total_classes=FLAGS.total_classes).F1_score_and_recall()
+                tdr_ = Measurement(predict=predict,
+                                        label=batch_label,
+                                        shape=[FLAGS.img_size*FLAGS.img_size, ],
+                                        total_classes=FLAGS.total_classes).TDR()
+
+                ignore_void_idx = np.where(batch_label==2) # 2 is void label
+                temp_img = predict
+                temp_img[ignore_void_idx] = 2
+
+                pred_mask_color = color_map[temp_img]  # 논문그림처럼 할것!
+                pred_mask_color = np.squeeze(pred_mask_color, 2)
+                batch_label = np.expand_dims(batch_label, -1)
+                batch_label = np.concatenate((batch_label, batch_label, batch_label), -1)
+                label_mask_color = np.zeros([FLAGS.img_size, FLAGS.img_size, 3], dtype=np.uint8)
+                label_mask_color = np.where(batch_label == np.array([0,0,0], dtype=np.uint8), np.array([255, 0, 0], dtype=np.uint8), label_mask_color)
+                label_mask_color = np.where(batch_label == np.array([1,1,1], dtype=np.uint8), np.array([0, 0, 255], dtype=np.uint8), label_mask_color)
+
+                name = test_img_dataset[i].split("/")[-1].split(".")[0]
+                plt.imsave(FLAGS.test_images + "/" + name + "_label.png", label_mask_color)
+                plt.imsave(FLAGS.test_images + "/" + name + "_predict.png", pred_mask_color)
+
+                miou += miou_
+                f1_score += f1_score_
+                sensitivity += recall_
+                tdr += tdr_
+                crop_iou += crop_iou_
+                weed_iou += weed_iou_
+
+        print("test mIoU = %.4f (crop_iou = %.4f, weed_iou = %.4f), test F1_score = %.4f, test sensitivity = %.4f, test TDR = %.4f" % (miou / len(test_img_dataset),
+                                                                                                                                            crop_iou / len(test_img_dataset),
+                                                                                                                                            weed_iou / len(test_img_dataset),
+                                                                                                                                            f1_score / len(test_img_dataset),
+                                                                                                                                            sensitivity / len(test_img_dataset),
+                                                                                                                                            tdr / len(test_img_dataset)))
+
 
 if __name__ == "__main__":
     main()
