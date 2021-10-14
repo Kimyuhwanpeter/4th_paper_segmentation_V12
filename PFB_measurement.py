@@ -29,7 +29,7 @@ class Measurement:
         cm_ = np.delete(cm, -1)
 
         out = np.zeros((2))
-        miou = np.divide(cm_, U, out=out, where=U != 0)
+        miou = np.divide(cm_, U + 1e-7)
         crop_iou = miou[0]
         weed_iou = miou[1]
         miou = np.nanmean(miou)
@@ -66,17 +66,17 @@ class Measurement:
         FP = np.where(FP_func1(self.predict) & FP_func2(self.predict, self.label), 1, 0)
         FP = np.sum(FP, dtype=np.int32)
        
-        TP_FP = (TP + FP)
+        TP_FP = (TP + FP) + 1e-7
 
-        TP_FN = (TP + FN)
+        TP_FN = (TP + FN) + 1e-7
 
         out = np.zeros((1))
-        Precision = np.divide(TP, TP_FP, out=out, where=TP_FP != 0)
-        Recall = np.divide(TP, TP_FN, out=out, where=TP_FN != 0)
+        Precision = np.divide(TP, TP_FP)
+        Recall = np.divide(TP, TP_FN)
 
-        Pre_Re = (Precision + Recall)
+        Pre_Re = (Precision + Recall) + 1e-7
 
-        F1_score = np.divide((2 * Precision * Recall), Pre_Re, out=out, where=Pre_Re != 0)
+        F1_score = np.divide(2.*(Precision * Recall), Pre_Re)
 
         return F1_score, Recall
 
