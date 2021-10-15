@@ -20,7 +20,7 @@ class Measurement:
          
         temp = self.total_classes * np.array(self.label, dtype="int") + np.array(self.predict, dtype="int")  # Get category metrics
     
-        temp_count = np.bincount(temp, minlength=self.total_classes*self.total_classes)
+        temp_count = np.bincount(temp, minlength=self.total_classes * self.total_classes)
         cm = np.reshape(temp_count, [self.total_classes, self.total_classes])
         cm = np.diag(cm)
     
@@ -46,26 +46,48 @@ class Measurement:
 
         self.predict = np.reshape(self.predict, self.shape)
         self.label = np.reshape(self.label, self.shape)
-        indices = np.squeeze(np.where(np.not_equal(self.label, 2)), 1)  # 2 is void label
-        self.label = np.array(np.take(self.label, indices), dtype=np.int32)
-        self.predict = np.array(np.take(self.predict, indices), dtype=np.int32)
 
-        TP = self.label * self.predict
+        self.axis1 = np.where(self.label != 2)
+        self.predict1 = np.take(self.predict, self.axis1)
+        self.label1 = np.take(self.label, self.axis1)
+
+        TP_func1 = lambda predict: predict[:] == 1
+        TP_func2 = lambda label,predict: label[:] == predict[:]
+        TP = np.where(TP_func1(self.predict1) & TP_func2(self.label1, self.predict1), 1, 0)
         TP = np.sum(TP, dtype=np.int32)
-        TN = self.label + self.predict
-        TN = TN[TN==0]
-        TN = int(len(TN))
-        
+
+        TN_func1 = lambda predict: predict[:] == 0
+        TN_func2 = lambda label,predict: label[:] == predict[:]
+        TN = np.where(TN_func1(self.predict1) & TN_func2(self.label1, self.predict1), 1, 0)
+        TN = np.sum(TN, dtype=np.int32)
+
         FN_func1 = lambda predict: predict[:] == 0
         FN_func2 = lambda label,predict: label[:] != predict[:]
-        FN = np.where(FN_func1(self.predict) & FN_func2(self.predict, self.label), 1, 0)
+        FN = np.where((FN_func1(self.predict1) & FN_func2(self.label1,self.predict1)), 1, 0)
         FN = np.sum(FN, dtype=np.int32)
 
         FP_func1 = lambda predict: predict[:] == 1
         FP_func2 = lambda label,predict: label[:] != predict[:]
-        FP = np.where(FP_func1(self.predict) & FP_func2(self.predict, self.label), 1, 0)
+        FP = np.where((FP_func1(self.predict1) & FP_func2(self.label1,self.predict1)), 1, 0)
         FP = np.sum(FP, dtype=np.int32)
-       
+
+        self.axis2 = np.where(self.label == 2)
+        self.predict2 = np.take(self.predict, self.axis2)
+        self.label2 = np.take(self.label, self.axis2)
+
+        FN_func3 = lambda predict: predict[:] == 2
+        FN_func4 = lambda label,predict: label[:] != predict[:]
+        FN2 = np.where((FN_func3(self.predict2) & FN_func4(self.label2,self.predict2)), 1, 0)
+        FN = np.sum(FN2, dtype=np.int32) + FN
+
+        FP_func3 = (lambda predict: predict[:] == 1)
+        FP_func4 = (lambda predict: predict[:] == 0)
+        FP_func5 = (FP_func3(self.predict2) | FP_func4(self.predict2))
+        FP_func6 = lambda label,predict: label[:] != predict[:]
+        FP2 = np.where(FP_func5 & FP_func6(self.label2,self.predict2), 1, 0)
+        FP = np.sum(FP2, dtype=np.int32) + FP
+
+
         TP_FP = (TP + FP) + 1e-7
 
         TP_FN = (TP + FN) + 1e-7
@@ -76,7 +98,7 @@ class Measurement:
 
         Pre_Re = (Precision + Recall) + 1e-7
 
-        F1_score = np.divide(2.*(Precision * Recall), Pre_Re)
+        F1_score = np.divide(2. * (Precision * Recall), Pre_Re)
 
         return F1_score, Recall
 
@@ -84,30 +106,51 @@ class Measurement:
 
         self.predict = np.reshape(self.predict, self.shape)
         self.label = np.reshape(self.label, self.shape)
-        indices = np.squeeze(np.where(np.not_equal(self.label, 2)), 1)
-        self.label = np.array(np.take(self.label, indices), dtype=np.int32)
-        self.predict = np.array(np.take(self.predict, indices), dtype=np.int32)
 
-        TP = self.label * self.predict
+        self.axis1 = np.where(self.label != 2)
+        self.predict1 = np.take(self.predict, self.axis1)
+        self.label1 = np.take(self.label, self.axis1)
+
+        TP_func1 = lambda predict: predict[:] == 1
+        TP_func2 = lambda label,predict: label[:] == predict[:]
+        TP = np.where(TP_func1(self.predict1) & TP_func2(self.label1, self.predict1), 1, 0)
         TP = np.sum(TP, dtype=np.int32)
-        TN = self.label + self.predict
-        TN = TN[TN==0]
-        TN = int(len(TN))
-        
+
+        TN_func1 = lambda predict: predict[:] == 0
+        TN_func2 = lambda label,predict: label[:] == predict[:]
+        TN = np.where(TN_func1(self.predict1) & TN_func2(self.label1, self.predict1), 1, 0)
+        TN = np.sum(TN, dtype=np.int32)
+
         FN_func1 = lambda predict: predict[:] == 0
         FN_func2 = lambda label,predict: label[:] != predict[:]
-        FN = np.where(FN_func1(self.predict) & FN_func2(self.predict, self.label), 1, 0)
+        FN = np.where((FN_func1(self.predict1) & FN_func2(self.label1,self.predict1)), 1, 0)
         FN = np.sum(FN, dtype=np.int32)
 
         FP_func1 = lambda predict: predict[:] == 1
         FP_func2 = lambda label,predict: label[:] != predict[:]
-        FP = np.where(FP_func1(self.predict) & FP_func2(self.predict, self.label), 1, 0)
+        FP = np.where((FP_func1(self.predict1) & FP_func2(self.label1,self.predict1)), 1, 0)
         FP = np.sum(FP, dtype=np.int32)
 
-        TP_FP = (TP + FP)
+        self.axis2 = np.where(self.label == 2)
+        self.predict2 = np.take(self.predict, self.axis2)
+        self.label2 = np.take(self.label, self.axis2)
+
+        FN_func3 = lambda predict: predict[:] == 2
+        FN_func4 = lambda label,predict: label[:] != predict[:]
+        FN2 = np.where((FN_func3(self.predict2) & FN_func4(self.label2,self.predict2)), 1, 0)
+        FN = np.sum(FN2, dtype=np.int32) + FN
+
+        FP_func3 = (lambda predict: predict[:] == 1)
+        FP_func4 = (lambda predict: predict[:] == 0)
+        FP_func5 = (FP_func3(self.predict2) | FP_func4(self.predict2))
+        FP_func6 = lambda label,predict: label[:] != predict[:]
+        FP2 = np.where(FP_func5 & FP_func6(self.label2,self.predict2), 1, 0)
+        FP = np.sum(FP2, dtype=np.int32) + FP
+
+        TP_FP = (TP + FP) + 1e-7
 
         out = np.zeros((1))
-        TDR = np.divide(FP, TP_FP, out=out, where=TP_FP != 0)
+        TDR = np.divide(FP, TP_FP)
 
         TDR = 1 - TDR
 
