@@ -61,7 +61,7 @@ if __name__ == "__main__":
         if np.bincount(a)[128] == 0:
             print("No weed",total_GT[i].split("/")[-1])
         else:
-            img_copy = np.where(func_test(img), img_copy, 128)
+            #img_copy = np.where(func_test(img), img_copy, 128) # is include other weed
             img_copy = np.array(img_copy, dtype=np.uint8)
             img_copy2 = cv2.flip(img_copy, -1)
             name = total_GT[i].split('/')[-1].split("_")[3].split("frame")[1]
