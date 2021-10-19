@@ -6,7 +6,21 @@
 * 자세한 모델설명은 다음주 월요일에..
 
 ## 테스트 결과 샘플 사진 및 성능
+
+### BoniRob dataset
 ![f1](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure1.png)
 <br/>
 
 ![f2](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure2.png)
+
+### Rice seedling and weed dataset
+![f3](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure3.png)
+<br/>
+
+![f4](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure4.png)
+
+### Carrot crop and weed (CWFID) dataset
+![f5](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure5.png)
+<br/>
+
+![f6](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure6.png)
