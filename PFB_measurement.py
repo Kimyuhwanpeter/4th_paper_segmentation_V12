@@ -155,6 +155,41 @@ class Measurement:
         TDR = 1 - TDR
 
         return TDR
+    
+    def show_confusion(self):
+        # TP - Red [255, 0, 0] 10, TN - 하늘색 [0, 255, 255] 20, FP - 분홍색 [255, 0, 255] 30, FN - 노랑 [255, 255, 0] 40
+
+        self.predict = np.squeeze(self.predict, -1)
+
+        color_map = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255], [236, 184, 199]])
+        TP_func = lambda func:func[:] == 1
+        output = np.where(TP_func(self.predict) & TP_func(self.label), 10, 0)  # get TP
+
+        TN_func = lambda func:func[:] == 0
+        output = np.where(TN_func(self.predict) & TN_func(self.label), 20, output)  # get TN
+        
+        FP_func = lambda func:func[:] == 1
+        FP_func2 = lambda func:func[:] == 0
+        FP_func3 = lambda func:func[:] == 2
+        output = np.where(FP_func(self.predict) & (FP_func2(self.label)|FP_func3(self.label)), 30, output)  # get FP
+
+        FN_func = lambda func:func[:] == 0
+        FN_func2 = lambda func:func[:] == 1
+        FN_func3 = lambda func:func[:] == 2
+        output = np.where(FN_func(self.predict) & (FN_func2(self.label)|FN_func3(self.label)), 40, output)  # get FN
+
+        output = np.expand_dims(output, -1)
+        output_3D = np.concatenate([output, output, output], -1)
+        temp_output_3D = output_3D
+        
+        output_3D = np.where(output == np.array([0, 0, 0], dtype=np.uint8), np.array([0, 0, 0], dtype=np.uint8), output_3D).astype(np.uint8)
+        output_3D = np.where(output == np.array([10, 10, 10], dtype=np.uint8), np.array([255, 0, 0], dtype=np.uint8), output_3D).astype(np.uint8)
+        output_3D = np.where(output == np.array([20, 20, 20], dtype=np.uint8), np.array([0, 255, 255], dtype=np.uint8), output_3D).astype(np.uint8)
+        output_3D = np.where(output == np.array([30, 30, 30], dtype=np.uint8), np.array([255, 0, 255], dtype=np.uint8), output_3D).astype(np.uint8)
+        output_3D = np.where(output == np.array([40, 40, 40], dtype=np.uint8), np.array([255, 255, 0], dtype=np.uint8), output_3D).astype(np.uint8)
+
+
+        return output_3D, temp_output_3D
 
 #import matplotlib.pyplot as plt
 
