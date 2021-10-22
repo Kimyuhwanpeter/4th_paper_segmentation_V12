@@ -40,3 +40,7 @@
 #### CWFID dataset with confusion image
 ![f10](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure10.png)
 <br/>
+
+## 비교실험 결과 (FCN-8s는 학습중이므로 못넣었음)
+![f7](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure7.png)
+<br/>
