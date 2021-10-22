@@ -13,14 +13,20 @@
 
 ![f2](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure2.png)
 
+#### BoniRob dataset with confusion image
+
 ### Rice seedling and weed dataset
 ![f3](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure3.png)
 <br/>
 
 ![f4](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure4.png)
 
+#### Rice seedling weed dataset with confusion image
+
 ### Carrot crop and weed (CWFID) dataset
 ![f5](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure5.png)
 <br/>
 
 ![f6](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure6.png)
+
+#### CWFID dataset with confusion image
