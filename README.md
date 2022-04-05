@@ -1,46 +1,22 @@
-# 4th_paper_segmentation_V2
-* Crop/weed 학습중 (아직 현재 최대 train miou 는 0.81 계속 증가하는 추세를 보임)
-* 대략 20에폭?(실험상 20~30에폭에서 급격하게 miou가 증가하였음) 에서 learning decay 를 도입해보자 
-* Test miou etc..(f1, recall) is state of the art (0.9038) (I can write paper !!!)
-* 기본 backbone 모델은 기존과 동일, loss와 output을 완전 다르게 구성하였음 (box detection에 쓰이는 object loss 및 grid 추가)
-* 자세한 모델설명은 다음주 월요일에..
+# MTS-CNN: Multi-task semantic segmentation-convolutional neural network for detecting crops and weeds
 
-## 테스트 결과 샘플 사진 및 성능
+    Yu Hwan Kim and Kang Ryoung Park, “MTS-CNN: Multi-task semantic segmentation-convolutional neural network for detecting crops and weeds,”  in submission 
+    
+<br>
 
-### BoniRob dataset
-![f1](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure1.png)
-<br/>
+## Implementation
+* Python >= 3.5
+* Tensorflow >= 2.4.0
+* Window 10 or Linux
+* Follow the "FLAGS" in the MTS_CNN_train.py
 
-![f2](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure2.png)
+## Result
+* BoniRob
+![image](https://user-images.githubusercontent.com/31001511/161713119-0b9c0a8d-fdcf-4089-851d-78dd76ee5fb7.png)
 
-#### BoniRob dataset with confusion image
-![f8](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure8.png)
-<br/>
-===============================================================================================
-<br/>
+* CWFID
+![image](https://user-images.githubusercontent.com/31001511/161713148-e94037d5-dd59-4ac1-bb76-5d2e7524c3b0.png)
 
-### Rice seedling and weed dataset
-![f3](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure3.png)
-<br/>
+* Rice seedling and weed
+![image](https://user-images.githubusercontent.com/31001511/161713184-7fe75599-f391-4af1-852e-6a875ebbaf0e.png)
 
-![f4](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure4.png)
-
-#### Rice seedling weed dataset with confusion image
-![f9](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure9.png)
-<br/>
-===============================================================================================
-<br/>
-
-### Carrot crop and weed (CWFID) dataset
-![f5](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure5.png)
-<br/>
-
-![f6](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure6.png)
-
-#### CWFID dataset with confusion image
-![f10](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure10.png)
-<br/>
-
-## 비교실험 결과 (FCN-8s는 학습중이므로 못넣었음)
-![f7](https://github.com/Kimyuhwanpeter/4th_paper_segmentation_V12/blob/main/Figure/figure7.png)
-<br/>
